@@ -3,3 +3,7 @@ gunicorn
 tensorflow
 numpy
 pillow
+requests
+google.oauth2
+google.cloud
+firebase_admin
