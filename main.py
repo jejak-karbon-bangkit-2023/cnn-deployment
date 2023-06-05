@@ -1,12 +1,11 @@
 import os
-
 import io
-import requests
 import tensorflow
 from tensorflow import keras
 import numpy as np
 from PIL import Image
 from flask import Flask, request, jsonify
+import requests
 from google.oauth2 import service_account
 from google.cloud import firestore, storage
 import firebase_admin
@@ -18,6 +17,8 @@ os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'config/service-account.json'
 
 cred = credentials.Certificate('config/service-account.json')
 firebase_admin.initialize_app(cred)
+
+
 model = keras.models.load_model("model.h5")
 label = ['Pohon Beringin','Pohon Bungur','Pohon Cassia','Pohon Jati','Pohon Kenanga','Pohon Kerai Payung','Pohon Saga','Pohon Trembesi','pohon Mahoni','pohon Matoa']
 
@@ -54,18 +55,22 @@ def validate_token(f):
             request.username = user.display_name
         except firebase_admin.auth.InvalidIdTokenError:
             return jsonify({'error': 'Unauthorized'}), 402
-        except firebase_admin.auth.ExpiredIdTokenError:
-            return jsonify({"error": "Expired authorization token"}), 401
+        
 
         return f(*args, **kwargs)
     return decorated_function
 
+
+   
 @app.route("/predict", methods=["POST"])
 @validate_token
 def predict():
     file = request.files.get('file')
+    
+
+    # Check if file is None or filename is empty
     if file is None or file.filename == "":
-        return jsonify({"error": "no file"})
+        return jsonify({"error": "No file provided"}), 400
     
     # Upload the file to Google Cloud Storage
     bucket = storage_client.bucket('img-plant')
@@ -77,11 +82,13 @@ def predict():
 
     #the ML open file from bucket URL
     image_bytes = requests.get(url)
-    img = Image.open(io.BytesIO(image_bytes))
+    img = Image.open(io.BytesIO(image_bytes.content))
     img = img.resize((224,224), Image.NEAREST)
     pred_img = predict_label(img)
 
-    # Generate UUID for the document in Firestore
+    
+
+     # Generate UUID for the document in Firestore
     uuid = str(uuid4())
 
     # Check if user data already exists in Firestore
@@ -165,7 +172,7 @@ def register():
     display_name = request.json.get("display_name")
 
     try:
-        user = auth.create_user(
+        auth.create_user(
             email=email,
             password=password,
             display_name=display_name
@@ -320,6 +327,7 @@ def get_plants(user_id):
             return jsonify(response_data), 200
     else:
         return jsonify({"error": True, "message": "User not found"}), 404
- 
+
+
 if __name__ == "__main__":
     app.run(debug=True)

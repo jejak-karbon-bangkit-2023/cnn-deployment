@@ -1,9 +1,10 @@
-Flask
+flask
 gunicorn
 tensorflow
 numpy
 pillow
+uuid
 requests
-google.oauth2
-google.cloud
-firebase_admin
+google-cloud-storage
+google-cloud-firestore
+firebase-admin
