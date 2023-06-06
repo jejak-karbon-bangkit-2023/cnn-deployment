@@ -31,7 +31,7 @@ app = Flask(__name__)
 db = firestore.Client(project='jejak-karbon-bangkit23')
 storage_client = storage.Client(project='jejak-karbon-bangkit23')
 
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
 def allowed_file(filename):
     return '.' in filename and \
