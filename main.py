@@ -1,32 +1,74 @@
 import os
 import io
+import requests
 import tensorflow
 from tensorflow import keras
 import numpy as np
 from PIL import Image
 from flask import Flask, request, jsonify
-import requests
-from google.oauth2 import service_account
 from google.cloud import firestore, storage
 import firebase_admin
 from firebase_admin import auth, credentials
 from uuid import uuid4
 from functools import wraps
+from werkzeug.utils import secure_filename
 
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'config/service-account.json'
 
 cred = credentials.Certificate('config/service-account.json')
 firebase_admin.initialize_app(cred)
 
+# The `project` parameter is optional and represents which project the client
+# will act on behalf of. If not supplied, the client falls back to the default
+# project inferred from the environment.
+
 
 model = keras.models.load_model("model.h5")
 label = ['Pohon Beringin','Pohon Bungur','Pohon Cassia','Pohon Jati','Pohon Kenanga','Pohon Kerai Payung','Pohon Saga','Pohon Trembesi','pohon Mahoni','pohon Matoa']
 
 app = Flask(__name__)
-
 #declaration using firestore and storage bucket
 db = firestore.Client(project='jejak-karbon-bangkit23')
 storage_client = storage.Client(project='jejak-karbon-bangkit23')
+
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def convert_to_jpg(file):
+    image = Image.open(file)
+    if image.mode != 'RGB':
+        image = image.convert('RGB')
+    image_jpg = io.BytesIO()
+    image.save(image_jpg, format='JPEG')
+    image_jpg.seek(0)
+    return image_jpg
+
+# Function to get the next available index for a username
+def get_next_index(username):
+    # Get the bucket reference
+    bucket = storage.Client().bucket('img-plant')
+
+    # Create the subdirectory based on the username
+    subdirectory = f"{username}/"
+
+    # List the objects in the subdirectory
+    blobs = bucket.list_blobs(prefix=subdirectory)
+
+    # Get the maximum index from the existing objects
+    max_index = -1
+    for blob in blobs:
+        filename = blob.name.split('/')[-1]
+        index = int(filename.split('.')[0])
+        if index > max_index:
+            max_index = index
+
+    # Calculate the next available index
+    next_index = max_index + 1 if max_index >= 0 else 0
+
+    return next_index
 
 #definition working of ML
 def predict_label(img):
@@ -55,26 +97,42 @@ def validate_token(f):
             request.username = user.display_name
         except firebase_admin.auth.InvalidIdTokenError:
             return jsonify({'error': 'Unauthorized'}), 402
-        
+        except firebase_admin.auth.ExpiredIdTokenError:
+            return jsonify({"error": "Expired authorization token"}), 401
 
         return f(*args, **kwargs)
     return decorated_function
 
 
    
+
+#route of post image
 @app.route("/predict", methods=["POST"])
 @validate_token
 def predict():
     file = request.files.get('file')
     
 
-    # Check if file is None or filename is empty
     if file is None or file.filename == "":
-        return jsonify({"error": "No file provided"}), 400
+        return jsonify({"error": "no file"})
+    if not allowed_file(file.filename):
+        return jsonify({'error': 'Invalid file format'}), 400
+    # Create the subdirectory based on the username
+    subdirectory = f"{request.user_id}/"
     
+    index = get_next_index(request.user_id)
+
+    # Generate the file name with the .jpg format
+    filename = f"{index}.jpg"
+
+    # Convert the file to .jpg if it's in .png or .jpeg format
+    if file.filename.lower().endswith(('.png', '.jpeg')):
+        file = convert_to_jpg(file)
+    
+
     # Upload the file to Google Cloud Storage
     bucket = storage_client.bucket('img-plant')
-    blob = bucket.blob(file.filename)
+    blob = bucket.blob(subdirectory + filename)
     blob.upload_from_file(file)
 
     # Generate the public URL for the uploaded file
@@ -86,9 +144,10 @@ def predict():
     img = img.resize((224,224), Image.NEAREST)
     pred_img = predict_label(img)
 
-    
+    if pred_img is None:
+        pred_img = 'Your plant is not found'
 
-     # Generate UUID for the document in Firestore
+    # Generate UUID for the document in Firestore
     uuid = str(uuid4())
 
     # Check if user data already exists in Firestore
@@ -255,7 +314,7 @@ def delete_plant(user_id, plant_index):
     users_ref = db.collection('users')
     query = users_ref.where('user_id', '==', user_id).limit(1)
     user_data = query.stream()
-
+    
     if user_data:
         # Iterate over the user data (assuming there is only one)
         for doc in user_data:
@@ -273,10 +332,34 @@ def delete_plant(user_id, plant_index):
             # Remove the plant at the specified index
             deleted_plant = plant_list.pop(plant_index)
 
+            # Get the bucket reference
+            bucket = storage_client.bucket('img-plant')
+            
+            # Create the subdirectory based on the username
+            subdirectory = f"{user_id}/"
+
+            # Generate the file name
+            filename = f"{plant_index}.jpg"
+            
+            # Delete the file from the subdirectory in the bucket
+            blob = bucket.blob(subdirectory + filename)
+            if bucket.get_blob(subdirectory+filename):
+                blob.delete()
+                # Update the index values or rename the remaining images
+                blobs = bucket.list_blobs(prefix=subdirectory)
+                for blob in blobs:
+                    if blob.name != subdirectory + filename:
+                        old_filename = blob.name.split('/')[-1]
+                        old_index = int(old_filename.split('.')[0])
+                        if old_index > plant_index:
+                            new_index = old_index - 1
+                            new_filename = f"{new_index}.jpg"
+                            bucket.rename_blob(blob, new_name=subdirectory+new_filename)
+
             # Update the index values of the remaining plants in the list
             for i, plant in enumerate(plant_list):
                 plant['index'] = i
-
+                
             # Update the plant list in the user's document
             user_doc_ref.update({'plant': plant_list})
 
@@ -285,7 +368,7 @@ def delete_plant(user_id, plant_index):
                 'error': False,
                 'data': deleted_plant
             }
-
+            
             return jsonify(response_data), 200
     else:
         return jsonify({"error": True, "message": "User not found"}), 404
@@ -327,6 +410,7 @@ def get_plants(user_id):
             return jsonify(response_data), 200
     else:
         return jsonify({"error": True, "message": "User not found"}), 404
+
 
 
 if __name__ == "__main__":
