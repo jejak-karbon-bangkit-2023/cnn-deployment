@@ -20,4 +20,23 @@ Make sure you have the following installed:
 - Google Cloud Firestore Client Library
 - Google Cloud Storage Client Library
 
+# My Flask REST API
 
+This is a Flask REST API that provides endpoints for managing users.
+
+## Endpoints
+
+### Register Users
+
+Creates a new user.
+
+- **URL**: `/register`
+- **Method**: `POST`
+- **Request Body**: 
+{
+    "email" : "<your-email@example.com>",
+    "password":"<your-password>",
+    "display_name" : "<your-display-name>"
+}
+- **Response**: 
+  {"error": False, "message": "Registration successful"}
