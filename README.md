@@ -32,11 +32,46 @@ Creates a new user.
 
 - **URL**: `/register`
 - **Method**: `POST`
-- **Request Body**: 
-`{
-    "email" : "<your-email@example.com>",
-    "password":"<your-password>",
-    "display_name" : "<your-display-name>"
-}`
-- **Response**: 
-  `{"error": False, "message": "Registration successful"}`
+- **Request Body**:
+    ```json
+    {
+        "email": "user@example.com",
+        "password": "password123",
+        "display_name": "John Doe"
+    }
+    ```
+
+- **Response**:
+    - Status: 200 Created
+    - Body:
+        ```json
+        {
+            "error": false,
+            "message": "Registration successful"
+        }
+        ```
+Content-Type: application/json
+
+### Predict Image
+
+Predicts the content of an image using an H5 model. The file will store in the Google Bucket and the data 
+will be writen in the firestore include the url of the image.
+
+- **URL**: `/predict`
+- **Method**: `POST`
+- **Authentication**: Bearer Token
+- **Request Headers**:
+    - `Authorization`: Bearer Token (e.g., `Authorization: Bearer {token}`)
+
+- **Request Body**:
+    - Content-Type: `multipart/form-data`
+    - Form Fields:
+        - `file`: File field containing the image to predict.
+
+- **Response**:
+    - Status: 200 OK
+    - Body:
+        ```json
+        {
+            "prediction": "cat"
+        }
