@@ -101,7 +101,6 @@ Retrieve all articles by sending a GET request to the following endpoint:
 - **Method**: `GET`
 - **Response**:
 ```json
-[
   {
     "id": "abc123",
     "title": "Sample Article 1"
@@ -110,26 +109,25 @@ Retrieve all articles by sending a GET request to the following endpoint:
     "id": "def456",
     "title": "Sample Article 2"
   }
-]
 ```
 
 ### Get Article by ID
 - **URL**: `/articles/<article_id>`
 - **Method**: `GET`
 - **Response**:
-json```[
-{
+```json
+    {
   "id": "abc123",
   "title": "Sample Article",
   "content": "Lorem ipsum dolor sit amet...",
   "paragraphs": [
     "Paragraph 1",
     "Paragraph 2",
-    "Paragraph 3"
-  ],
+    "Paragraph 3",
+    ],
   "image_url": "https://storage.googleapis.com/article-img/1010/1.jpg"
-}
-]```
+    }
+```
 
 ### Delete Article
 
@@ -138,9 +136,9 @@ Delete an article by its ID by sending a DELETE request to the following endpoin
 - **URL**: `/articles/<article_id>`
 - **Method**: `DELETE`
 - **Response**:
-json```[
+```json
     {
   "id": "abc123",
   "message": "Article deleted successfully"
 }
-]```
+```
