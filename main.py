@@ -249,15 +249,12 @@ def create_custom_token(uid):
 @app.route('/signin', methods=['POST'])
 def signin():
     email = request.json['email']
-    user = auth.get_user_by_email(email)
-    if user:
-        try:
-            custom_token = create_custom_token(user.uid)
-            return {'token': custom_token.decode('utf-8')}
-        except ValueError:
-            return {'error': 'Invalid password'}
-    else:
-        return {'error': 'User not found'}
+    try:     
+        user = auth.get_user_by_email(email)
+        custom_token = create_custom_token(user.uid)
+        return {'token': custom_token.decode('utf-8')}, 200
+    except Exception as e:
+        return {'error': str(e)}, 500
     
    
    
