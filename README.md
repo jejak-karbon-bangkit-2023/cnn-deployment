@@ -75,3 +75,72 @@ will be writen in the firestore include the url of the image.
         {
             "prediction": "cat"
         }
+### Post an Article
+
+Create a new article by sending a POST request to the following endpoint:
+
+- **URL**: `/articles`
+- **Method**: `POST`
+- **Request Body**:
+- `title` (string): The title of the article.
+- `content` (string): The content of the article.
+- `paragraphs` (array): An array of paragraphs in the article.
+- `image` (file): The image file associated with the article.
+
+- **Response**:
+```json
+{
+  "id": "abc123",
+  "message": "Article posted successfully"
+}
+```
+### Get All Articles
+
+Retrieve all articles by sending a GET request to the following endpoint:
+- **URL**: `/articles`
+- **Method**: `GET`
+- **Response**:
+```json
+[
+  {
+    "id": "abc123",
+    "title": "Sample Article 1"
+  },
+  {
+    "id": "def456",
+    "title": "Sample Article 2"
+  }
+]
+```
+
+### Get Article by ID
+- **URL**: `/articles/<article_id>`
+- **Method**: `GET`
+- **Response**:
+json```[
+{
+  "id": "abc123",
+  "title": "Sample Article",
+  "content": "Lorem ipsum dolor sit amet...",
+  "paragraphs": [
+    "Paragraph 1",
+    "Paragraph 2",
+    "Paragraph 3"
+  ],
+  "image_url": "https://storage.googleapis.com/article-img/1010/1.jpg"
+}
+]```
+
+### Delete Article
+
+Delete an article by its ID by sending a DELETE request to the following endpoint:
+
+- **URL**: `/articles/<article_id>`
+- **Method**: `DELETE`
+- **Response**:
+json```[
+    {
+  "id": "abc123",
+  "message": "Article deleted successfully"
+}
+]```

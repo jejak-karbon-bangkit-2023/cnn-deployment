@@ -47,9 +47,9 @@ def convert_to_jpg(file):
     return image_jpg
 
 # Function to get the next available index for a username
-def get_next_index(username):
+def get_next_index(username, dir):
     # Get the bucket reference
-    bucket = storage.Client().bucket('img-plant')
+    bucket = storage.Client().bucket(dir)
 
     # Create the subdirectory based on the username
     subdirectory = f"{username}/"
@@ -120,7 +120,7 @@ def predict():
     # Create the subdirectory based on the username
     subdirectory = f"{request.user_id}/"
     
-    index = get_next_index(request.user_id)
+    index = get_next_index(request.user_id,'img-plant')
 
     # Generate the file name with the .jpg format
     filename = f"{index}.jpg"
@@ -411,7 +411,115 @@ def get_plants(user_id):
     else:
         return jsonify({"error": True, "message": "User not found"}), 404
 
+@app.route('/post_article', methods=['POST'])
+def post_article():
+    # Get the form data
+    title = request.form.get('title')
+    content = request.form.get('content')
+    paragraphs = request.form.getlist('paragraphs[]')
+    image = request.files.get('image')
 
+    index = get_next_index('1010','article-img')
+    filename=f"{index}.jpg"
+    subdirectory= "1010/"
+    # Upload the resized image to Google Cloud Storage
+    bucket = storage_client.bucket('article-img')
+    blob = bucket.blob(subdirectory+filename)
+    blob.upload_from_file(image)
+
+    # Generate the public URL for the uploaded image
+    image_url = blob.public_url
+
+    # Create a new document in Firestore
+    doc_ref = db.collection('articles').document()
+
+    # Prepare the article data
+    article_data = {
+        'title': title,
+        'content': content,
+        'paragraphs': paragraphs,
+        'image_url': image_url
+    }
+
+    # Save the article data to Firestore
+    doc_ref.set(article_data)
+
+    # Prepare the response data
+    response_data = {
+        'id': doc_ref.id,
+        'message': 'Article posted successfully'
+    }
+
+    # Return the response as JSON
+    return jsonify(response_data), 200
+
+@app.route('/articles', methods=['GET'])
+def get_articles():
+    # Retrieve all articles from Firestore
+    articles = db.collection('articles').stream()
+
+    articles_data = []
+    for article in articles:
+        # Extract the article ID and title
+        article_data = {
+            'id': article.id,
+            'title': article.get('title')
+        }
+        articles_data.append(article_data)
+
+    return jsonify(articles_data), 200
+
+@app.route('/articles/<article_id>', methods=['GET'])
+def get_article(article_id):
+    # Retrieve the article from Firestore
+    doc_ref = db.collection('articles').document(article_id)
+    article = doc_ref.get()
+
+    if article.exists:
+        # Extract the article data
+        article_data = article.to_dict()
+        return jsonify(article_data), 200
+    else:
+        return jsonify({'error': 'Article not found'}), 404
+    
+@app.route('/articles/<article_id>', methods=['DELETE'])
+def delete_article(article_id):
+    # Get the document reference
+    doc_ref = db.collection('articles').document(article_id)
+
+    # Get the article data
+    article_data = doc_ref.get().to_dict()
+
+    if article_data:
+        # Delete the document from Firestore
+        doc_ref.delete()
+
+        # Delete the corresponding file from Google Cloud Storage
+        image_url = article_data.get('image_url')
+        if image_url:
+            # Extract the filename from the image URL
+            filename = image_url.split('/')[-1]
+
+            # Get the bucket reference
+            bucket = storage_client.bucket('article-img')
+
+            # Create the blob path based on the filename
+            blob_path = f"1010/{filename}"
+
+            if bucket.get_blob(blob_path):
+                # Delete the blob from the bucket
+                blob = bucket.blob(blob_path)
+                blob.delete()
+
+        # Prepare the response data
+        response_data = {
+            'id': article_id,
+            'message': 'Article deleted successfully'
+        }
+        return jsonify(response_data), 200
+    else:
+        # If the article is not found, return a 404 response
+        return jsonify({'error': 'Article not found'}), 404
 
 if __name__ == "__main__":
     app.run(debug=True)
