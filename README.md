@@ -65,27 +65,30 @@ will be writen in the firestore include the url of the image.
 
 - **Request Body**:
     - Content-Type: `multipart/form-data`
-    - Form Fields:
-        - `file`: File field containing the image to predict.
+    - Form Fields: files
 
 - **Response**:
     - Status: 200 OK
     - Body:
+ 
+
 ```json
         {
-            'uuid': uuid,
-                'user_id': request.user_id,
-                'email': request.email,
-                'name': request.username,
-                'plant': [
-                    {
-                        'index': new_plant_index,
-                        'image_url': url,
-                        'name': pred_img,
-                        'c_in': c_in
-                    }
-                         ]
+            "data": {
+        "email": "*******r@gmail.com",
+        "name": "c******r",
+        "plant": [
+            {
+                "image_url": "https://storage.googleapis.com/url",
+                "index": 0,
+                "name": "Pohon Cassia"
             }
+        ],
+        "user_id": "Z64dvD********7cg1",
+        "uuid": "89bbcd*********4ad877e7"
+    },
+    "error": false,
+    "message": "Success"
 ```      
             
 
