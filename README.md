@@ -71,10 +71,151 @@ will be writen in the firestore include the url of the image.
 - **Response**:
     - Status: 200 OK
     - Body:
-        ```json
+```json
         {
-            "prediction": "cat"
-        }
+            'uuid': uuid,
+                'user_id': request.user_id,
+                'email': request.email,
+                'name': request.username,
+                'plant': [
+                    {
+                        'index': new_plant_index,
+                        'image_url': url,
+                        'name': pred_img,
+                        'c_in': c_in
+                    }
+                         ]
+            }
+```      
+            
+
+ 
+ 
+ ### Emission Calculation
+ 
+- **URL**: `/emission`
+- **Method**: `POST`
+- **Authentication**: Bearer Token
+- **Request Headers**:
+    - `Authorization`: Bearer Token (e.g., `Authorization: Bearer {token}`)
+
+- **Request Body**:
+ ```json
+{
+    "trports":"Sepeda Motor",
+    "distnce": 5
+}
+```
+
+- **Response**:
+    - Status: 200 OK
+   ```json
+    {
+    "data": {
+        "email": "***@gmail.com",
+        "name": "coba-server",
+        "transport": [
+            {
+                "c_out": 1344,
+                "distance": 7,
+                "index": 0,
+                "name": "Mobil"
+            },
+            {
+                "c_out": 515,
+                "distance": 5,
+                "index": 1,
+                "name": "Sepeda Motor"
+            }
+        ],
+        "user_id": "Z64******GUNNtjEW7cg1",
+        "uuid": "fe******4dee3ce68ec"
+         },
+            "error": false,
+              "message": "Success"
+         } 
+   ```
+ 
+### Get data user
+- **URL**: `/user/<UID>`
+- **Method**: `GET`
+- **Authentication**: Bearer Token
+- **Request Headers**:
+    - `Authorization`: Bearer Token (e.g., `Authorization: Bearer {token}`)
+
+- **Response**:
+    - Status: 200 OK
+```json
+{
+    "data": {
+        "email": "***@gmail.com",
+        "name": "coba-server",
+        "plant": [
+            {
+                "image_url": "URL",
+                "index": 0,
+                "name": "Pohon Cassia"
+            }
+        ],
+        "transport": [
+            {
+                "c_out": 515,
+                "distance": 5,
+                "index": 0,
+                "name": "Sepeda Motor"
+            }
+        ],
+        "user_id": "****MGUNNtjEW7cg1"
+    },
+    "error": false,
+    "message": "User retrieved successfully"
+}
+```
+
+### DELETE Specific User Transportation
+- **URL**: `/user/<user_id>/transport/<int:transport_index>`
+- **Method**: `DELETE`
+- **Authentication**: Bearer Token
+- **Request Headers**:
+    - `Authorization`: Bearer Token (e.g., `Authorization: Bearer {token}`)
+
+- **Response**:
+    - Status: 200 OK
+```json
+{
+    "data": {
+        "c_out": 1344,
+        "distance": 7,
+        "index": 0,
+        "name": "Mobil"
+    },
+    "error": false,
+    "message": "Transport deleted"
+}
+```
+###Get Spesific User Transportation
+- **URL**: `user/<user_id>/transport`
+- **Method**: `GET`
+- **Authentication**: Bearer Token
+- **Request Headers**:
+    - `Authorization`: Bearer Token (e.g., `Authorization: Bearer {token}`)
+
+- **Response**:
+    - Status: 200 OK
+```json
+{
+    "data": {
+        "c_out": 1344,
+        "distance": 7,
+        "index": 0,
+        "name": "Mobil"
+    },
+    "error": false,
+    "message": "Transport deleted"
+}
+```
+
+
 ### Post an Article
 
 Create a new article by sending a POST request to the following endpoint:
@@ -104,10 +245,12 @@ Retrieve all articles by sending a GET request to the following endpoint:
   {
     "id": "abc123",
     "title": "Sample Article 1"
+    "image_url": "URL"
   },
   {
     "id": "def456",
     "title": "Sample Article 2"
+    "image_url": "URL"
   }
 ```
 
