@@ -81,7 +81,8 @@ will be writen in the firestore include the url of the image.
             {
                 "image_url": "https://storage.googleapis.com/url",
                 "index": 0,
-                "name": "Pohon Cassia"
+                "name": "Pohon Cassia",
+                "c_in": 0.96
             }
         ],
         "user_id": "Z64dvD********7cg1",
