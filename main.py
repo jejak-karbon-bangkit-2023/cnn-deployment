@@ -12,7 +12,7 @@ import firebase_admin
 from firebase_admin import auth, credentials
 from uuid import uuid4
 from functools import wraps
-from flask_restful import Api
+
 
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'config/service-account.json'
 
@@ -98,8 +98,7 @@ def validate_token(f):
             request.username = user.display_name
         except firebase_admin.auth.InvalidIdTokenError:
             return jsonify({'error': 'Unauthorized'}), 402
-        except firebase_admin.auth.ExpiredIdTokenError:
-            return jsonify({"error": "Expired authorization token"}), 401
+        
 
         return f(*args, **kwargs)
     return decorated_function
