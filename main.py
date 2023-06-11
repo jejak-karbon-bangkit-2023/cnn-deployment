@@ -1,3 +1,4 @@
+from logging import exception
 import os
 import io
 import requests
@@ -11,7 +12,7 @@ import firebase_admin
 from firebase_admin import auth, credentials
 from uuid import uuid4
 from functools import wraps
-from werkzeug.utils import secure_filename
+from flask_restful import Api
 
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'config/service-account.json'
 
@@ -31,7 +32,7 @@ app = Flask(__name__)
 db = firestore.Client(project='jejak-karbon-bangkit23')
 storage_client = storage.Client(project='jejak-karbon-bangkit23')
 
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 def allowed_file(filename):
     return '.' in filename and \
@@ -103,8 +104,41 @@ def validate_token(f):
         return f(*args, **kwargs)
     return decorated_function
 
-
-   
+def absorption_count(plant):
+    if plant == 'Pohon Beringin':
+        return 218.9
+    elif plant == 'Pohon Bungur':
+        return 27.97
+    elif plant == 'Pohon Cassia':
+        return 0.96
+    elif plant == 'Pohon Jati':
+        return 23.63
+    elif plant == 'Pohon Kenanga':
+        return 7.9
+    elif plant == 'Pohon Kerai Payung':
+        return 4.15
+    elif plant == 'Pohon Saga':
+        return 2.6
+    elif plant == 'Pohon Trembesi':
+        return 23.33
+    elif plant == 'Pohon Mahoni':
+        return 51.66
+    elif plant == 'Pohon Matoa':
+        return 1356.05
+    else:
+        return None
+    
+def emission_count(plant, distance):
+    if plant == 'Sepeda Motor':
+        ems = 103
+    elif plant == 'Mobil':
+        ems = 192
+    elif plant == 'Bis':
+        ems = 105
+    else:
+        ems = 0
+    hasil = ems * distance
+    return hasil
 
 #route of post image
 @app.route("/predict", methods=["POST"])
@@ -144,8 +178,7 @@ def predict():
     img = img.resize((224,224), Image.NEAREST)
     pred_img = predict_label(img)
 
-    if pred_img is None:
-        pred_img = 'Your plant is not found'
+    c_in = absorption_count(pred_img)
 
     # Generate UUID for the document in Firestore
     uuid = str(uuid4())
@@ -178,7 +211,8 @@ def predict():
                     {
                         'index': new_plant_index,
                         'image_url': url,
-                        'name': pred_img
+                        'name': pred_img,
+                        'c_in': c_in
                     }
                 ]
             }
@@ -207,7 +241,8 @@ def predict():
                 {
                     'index': 0,
                     'image_url': url,
-                    'name': pred_img
+                    'name': pred_img,
+                    'c_in': c_in
                 }
             ]
         }
@@ -245,7 +280,7 @@ def register():
 def create_custom_token(uid):
     custom_token = auth.create_custom_token(uid)
     return custom_token
-
+    
 @app.route('/signin', methods=['POST'])
 def signin():
     email = request.json['email']
@@ -256,49 +291,59 @@ def signin():
     except Exception as e:
         return {'error': str(e)}, 500
     
-   
+ 
    
 @app.route("/user/<user_id>", methods=["GET"])
 @validate_token
 def get_user_data(user_id):
-    # Check if user ID matches the authenticated user
-    if user_id != request.user_id:
-        return jsonify({"error": True, "message": "Unauthorized"}), 403
+    try:
+        # Check if user ID matches the authenticated user
+        if user_id != request.user_id:
+            return jsonify({"error": True, "message": "Unauthorized"}), 403
 
-    # Retrieve user data from Firestore
-    users_ref = db.collection('users')
-    query = users_ref.where('user_id', '==', user_id).limit(1)
-    user_data = list(query.stream()) 
+        # Retrieve user data from Firestore
+        users_ref = db.collection('users')
+        query = users_ref.where('user_id', '==', user_id).limit(1)
+        user_data = list(query.stream()) 
 
-    if user_data:
-        # Iterate over the user data (assuming there is only one)
-        for doc in user_data:
-            user_doc = doc.to_dict()
-            # Retrieve the plant list for the user
-            plant_list = user_doc.get('plant', [])
+        if user_data:
+            # Iterate over the user data (assuming there is only one)
+            for doc in user_data:
+                user_doc = doc.to_dict()
+                # Retrieve the plant list for the user
+                plant_list = user_doc.get('plant', [])
+                transport_list= user_doc.get('transport', [])
 
-            if isinstance(plant_list, dict):
-                plant_list = [plant_list]
+                if isinstance(plant_list, dict):
+                    plant_list = [plant_list]
+                if isinstance(transport_list, dict):
+                    transport_list = [transport_list]
 
-            # Update the index values of the plant list
-            for i, plant in enumerate(plant_list):
-                plant['index'] = i
+                # Update the index values of the plant list
+                for i, plant in enumerate(plant_list):
+                    plant['index'] = i
 
-            response_data = {
-                'message': 'User retrieved successfully',
-                'error': False,
-                'data': {
-                    'user_id': user_id,
-                    'email': request.email,
-                    'name': request.username,
-                    'plant': plant_list
+                for i, transport in enumerate(transport_list):
+                    transport['index'] = i
+
+                response_data = {
+                    'message': 'User retrieved successfully',
+                    'error': False,
+                    'data': {
+                        'user_id': user_id,
+                        'email': request.email,
+                        'name': request.username,
+                        'plant': plant_list,
+                        'transport':transport_list
+
+                    }
                 }
-            }
 
-            return jsonify(response_data), 200
-    else:
-        return jsonify({"error": True, "message": "User not found"}), 404
-
+                return jsonify(response_data), 200
+        else:
+            return jsonify({"error": True, "message": "User not found"}), 404
+    except Exception as e:
+        return {'error': str(e)}, 500
 
 @app.route("/user/<user_id>/plant/<int:plant_index>", methods=["DELETE"])
 @validate_token
@@ -407,7 +452,187 @@ def get_plants(user_id):
             return jsonify(response_data), 200
     else:
         return jsonify({"error": True, "message": "User not found"}), 404
+    
 
+@app.route("/emission",methods=["POST"])
+@validate_token
+def emission():
+    trports= request.json.get("transport")
+    distnce=request.json.get("distance")
+
+    #{"Sepeda Motor", "Mobil", "Bis"}
+    c_out=emission_count(trports,distnce)
+
+     # Generate UUID for the document in Firestore
+    uuid = str(uuid4())
+
+    # Check if user data already exists in Firestore
+    users_ref = db.collection('users')
+    query = users_ref.where('user_id', '==', request.user_id).limit(1)
+    existing_data = list(query.stream()) 
+
+     # Initialize the data dictionary
+    data = {}
+
+    try:
+        if existing_data:
+            # Iterate over the existing user data (assuming there is only one)
+            for doc in existing_data:
+                existing_doc = doc.to_dict()
+                existing_transport_list = existing_doc.get('transport', [])
+
+                if isinstance(existing_transport_list, dict):
+                    existing_transport_list = [existing_transport_list]
+
+                # Determine the index for the new transport
+                new_transport_index = len(existing_transport_list)
+
+                # Create data object to be stored in Firestore with the new transport
+                data = {
+                            'uuid': uuid,
+                            'user_id': request.user_id,
+                            'email': request.email,
+                            'name': request.username,
+                            'transport': [
+                            {
+                                'index': new_transport_index,
+                                'name' : trports,
+                                'distance': distnce,
+                                'c_out':c_out
+                            }
+                            ]
+                            }
+
+                # Add the new transport to the existing transport list
+                existing_transport_list.append(data['transport'][0])
+
+                # Update the existing data with the updated transport list
+                doc.reference.update({'transport': existing_transport_list})
+
+                # Update the index of existing transport in the list
+                for i, transport in enumerate(existing_transport_list):
+                    transport['index'] = i
+
+                # Update the data object with the updated transport list
+                data['transport'] = existing_transport_list
+
+        else:
+         # Create data object to be stored in Firestore with initial transport
+            data = {
+            'uuid': uuid,
+            'user_id': request.user_id,
+            'email': request.email,
+            'name': request.username,
+            'transport': [
+                {   
+                    'index':0,
+                    'name' : trports,
+                    'distance': distnce,
+                    'c_out':c_out
+                }
+                    ]
+                 }
+
+            # Save data to Firestore
+            users_ref.document(uuid).set(data)
+        # Create the response data
+        response_data = {
+        'data': data,
+        'message': 'Success',
+        'error': False,
+         }
+        return jsonify(response_data),200
+    except Exception as e:
+        return {'error': str(e)}, 500
+
+@app.route("/user/<user_id>/transport/<int:transport_index>", methods=["DELETE"])
+@validate_token
+def delete_transport(user_id, transport_index):
+    # Check if user ID matches the authenticated user
+    if user_id != request.user_id:
+        return jsonify({"error": True, "message": "Unauthorized"}), 403
+
+    # Retrieve user data from Firestore
+    users_ref = db.collection('users')
+    query = users_ref.where('user_id', '==', user_id).limit(1)
+    user_data = query.stream()
+    try:
+        if user_data:
+            # Iterate over the user data (assuming there is only one)
+            for doc in user_data:
+                user_doc_ref = doc.reference
+                user_doc_data = doc.to_dict()
+                transport_list = user_doc_data.get('transport', [])
+
+                if isinstance(transport_list, dict):
+                    transport_list = [transport_list]
+
+                # Check if the provided transport index is valid
+                if transport_index < 0 or transport_index >= len(transport_list):
+                    return jsonify({"error": True, "message": "Invalid transport index"}), 400
+
+                # Remove the transport at the specified index
+                deleted_transport = transport_list.pop(transport_index)
+
+                # Update the index values of the remaining transports in the list
+                for i, transport in enumerate(transport_list):
+                    transport['index'] = i
+
+                # Update the transport list in the user's document
+                user_doc_ref.update({'transport': transport_list})
+
+                response_data = {
+                    'message': 'Transport deleted',
+                    'error': False,
+                    'data': deleted_transport
+                }
+                
+                return jsonify(response_data), 200
+        else:
+            return jsonify({"error": True, "message": "User not found"}), 404
+    except Exception as e:
+        return {'error': str(e)}, 500
+    
+@app.route("/user/<user_id>/transport", methods=["GET"])
+@validate_token
+def get_transport(user_id):
+    # Check if user ID matches the authenticated user
+    if user_id != request.user_id:
+        return jsonify({"error": True, "message": "Unauthorized"}), 403
+
+    # Retrieve user data from Firestore
+    users_ref = db.collection('users')
+    query = users_ref.where('user_id', '==', user_id).limit(1)
+    user_data = query.stream()
+    try:
+        if user_data:
+            # Iterate over the user data (assuming there is only one)
+            for doc in user_data:
+                user_doc_data = doc.to_dict()
+                transport_list = user_doc_data.get('transport', [])
+
+                if isinstance(transport_list, dict):
+                    transport_list = [transport_list]
+
+                # Update the index values of the transport list
+                for i, transport in enumerate(transport_list):
+                    transport['index'] = i
+
+                if len(transport_list) == 0:
+                    return jsonify({"message": "No transport found", "error": False, "data": []}), 200
+
+                response_data = {
+                    'message': 'Transport retrieved successfully',
+                    'error': False,
+                    'data': transport_list
+                }
+
+                return jsonify(response_data), 200
+        else:
+            return jsonify({"error": True, "message": "User not found"}), 404
+    except Exception as e:
+        return {'error': str(e)}, 500
+                   
 @app.route('/post_article', methods=['POST'])
 def post_article():
     # Get the form data
@@ -460,7 +685,8 @@ def get_articles():
         # Extract the article ID and title
         article_data = {
             'id': article.id,
-            'title': article.get('title')
+            'title': article.get('title'),
+            'image_url':article.get('image_url')
         }
         articles_data.append(article_data)
 
@@ -517,6 +743,6 @@ def delete_article(article_id):
     else:
         # If the article is not found, return a 404 response
         return jsonify({'error': 'Article not found'}), 404
-
+        
 if __name__ == "__main__":
     app.run(debug=True)
