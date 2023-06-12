@@ -65,8 +65,16 @@ will be writen in the firestore include the url of the image.
 
 - **Request Body**:
     - Content-Type: `multipart/form-data`
-    - Form Fields: files
+    Form-Data
 
+    - `file`: File field untuk mengunggah file gambar.
+    - `transport`: String field yang mewakili jenis transportasi.
+    - `distance`: Integer field yang mewakili jarak dalam kilometer.s
+
+*notes* data dapat berupa 
+1. upload file saja
+2. upload data transport dan distance saja
+3. upload file, data transport, dan distance
 - **Response**:
     - Status: 200 OK
     - Body:
@@ -74,30 +82,31 @@ will be writen in the firestore include the url of the image.
 
 ```json
        {
-    "data": {
-        "c_in_sum": 347.15999999999997,
-        "email": "c*******er@gmail.com",
+    "data_plant": {
+        "c_in_sum": 314.76,
+        "email": "coba-server@gmail.com",
         "name": "coba-server",
         "plant": [
             {
-                "c_in": 335.64,
-                "image_url": "https://storage.googleapis.com/i************.jpg",
+                "c_in": 283.56,
+                "image_url": "https://storage.googleapis.com/img-plant/Z64dvDRd2ZdjNmGMGUNNtjEW7cg1/0.jpg",
                 "index": 0,
-                "name": "Pohon Bungur"
+                "name": "Pohon Jati"
             },
             {
-                "c_in": 11.52,
-                "image_url": "https://storage.googleapis.com/i**********.jpg",
+                "c_in": 31.200000000000003,
+                "image_url": "https://storage.googleapis.com/img-plant/Z64dvDRd2ZdjNmGMGUNNtjEW7cg1/1.jpg",
                 "index": 1,
-                "name": "Pohon Cassia"
+                "name": "Pohon Saga"
             }
         ],
-        "user_id": "Z********1",
-        "uuid": "6d97acc9-2851-4a10-9497-006980cb14c6"
+        "user_id": "Z64dvDRd2ZdjNmGMGUNNtjEW7cg1",
+        "uuid": "bdd35694-d565-4d60-bac1-06ab36e660ec"
     },
+    "data_transport": {},
     "error": false,
-    "message": "Transport data added successfully"
-}
+    "message": "Success"
+    }
 ```      
             
 
