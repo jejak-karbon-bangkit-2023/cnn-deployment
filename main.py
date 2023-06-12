@@ -24,7 +24,7 @@ firebase_admin.initialize_app(cred)
 # project inferred from the environment.
 
 
-model = keras.models.load_model("model.h5")
+model = keras.models.load_model("model_v2.h5")
 label = ['Pohon Beringin','Pohon Bungur','Pohon Cassia','Pohon Jati','Pohon Kenanga','Pohon Kerai Payung','Pohon Saga','Pohon Trembesi','pohon Mahoni','pohon Matoa']
 
 app = Flask(__name__)
@@ -143,70 +143,119 @@ def emission_count(plant, distance):
 def predict():
     try:
         file = request.files.get('file')
-        
-
-        if file is None or file.filename == "":
-            return jsonify({"error": "no file"})
-        if not allowed_file(file.filename):
-            return jsonify({'error': 'Invalid file format'}), 400
-        # Create the subdirectory based on the username
-        subdirectory = f"{request.user_id}/"
-        
-        index = get_next_index(request.user_id,'img-plant')
-
-        # Generate the file name with the .jpg format
-        filename = f"{index}.jpg"
-
-        # Convert the file to .jpg if it's in .png or .jpeg format
-        if file.filename.lower().endswith(('.png', '.jpeg')):
-            file = convert_to_jpg(file)
-        
-
-        # Upload the file to Google Cloud Storage
-        bucket = storage_client.bucket('img-plant')
-        blob = bucket.blob(subdirectory + filename)
-        blob.upload_from_file(file)
-
-        # Generate the public URL for the uploaded file
-        url = blob.public_url
-
-        #the ML open file from bucket URL
-        image_bytes = requests.get(url)
-        img = Image.open(io.BytesIO(image_bytes.content))
-        img = img.resize((224,224), Image.NEAREST)
-        pred_img = predict_label(img)
-
-        c_in = absorption_count(pred_img)
-
-        # Generate UUID for the document in Firestore
+        transport=request.form.get('transport')
+        distance=request.form.get('distance')
+        t_data = {}
+        data = {}
         uuid = str(uuid4())
 
-        # Check if user data already exists in Firestore
-        users_ref = db.collection('users')
-        query = users_ref.where('user_id', '==', request.user_id).limit(1)
-        existing_data = list(query.stream()) 
+        if file is not None:
+            if not allowed_file(file.filename):
+                return jsonify({'error': 'Invalid file format'}), 400
+            # Create the subdirectory based on the username
+            subdirectory = f"{request.user_id}/"
+            
+            index = get_next_index(request.user_id,'img-plant')
 
-        data = {}
+            # Generate the file name with the .jpg format
+            filename = f"{index}.jpg"
 
-        if existing_data:
-            # Iterate over the existing user data (assuming there is only one)
-            for doc in existing_data:
-                existing_doc = doc.to_dict()
-                existing_plant_list = existing_doc.get('plant', [])
-                if isinstance(existing_plant_list, dict):
-                    existing_plant_list = [existing_plant_list]
-                # Determine the index for the new plant
-                new_plant_index = len(existing_plant_list)
+            # Convert the file to .jpg if it's in .png or .jpeg format
+            if file.filename.lower().endswith(('.png', '.jpeg')):
+                file = convert_to_jpg(file)
+            
 
-                # Create data object to be stored in Firestore with the new plant
+            # Upload the file to Google Cloud Storage
+            bucket = storage_client.bucket('img-plant')
+            blob = bucket.blob(subdirectory + filename)
+            blob.upload_from_file(file)
+
+            # Generate the public URL for the uploaded file
+            url = blob.public_url
+
+            #the ML open file from bucket URL
+            image_bytes = requests.get(url)
+            img = Image.open(io.BytesIO(image_bytes.content))
+            img = img.resize((224,224), Image.NEAREST)
+            pred_img = predict_label(img)
+
+            #12 hours plant can photosyntesis
+            c_in = absorption_count(pred_img) * 12
+
+            # Generate UUID for the document in Firestore
+            
+
+            # Check if user data already exists in Firestore
+            users_ref = db.collection('users')
+            query = users_ref.where('user_id', '==', request.user_id).limit(1)
+            existing_data = list(query.stream()) 
+
+            
+
+            if existing_data:
+                # Iterate over the existing user data (assuming there is only one)
+                for doc in existing_data:
+                    existing_doc = doc.to_dict()
+                    existing_plant_list = existing_doc.get('plant', [])
+                    if isinstance(existing_plant_list, dict):
+                        existing_plant_list = [existing_plant_list]
+                    # Determine the index for the new plant
+                    new_plant_index = len(existing_plant_list)
+
+                    # Create data object to be stored in Firestore with the new plant
+                    data = {
+                        'uuid': uuid,
+                        'user_id': request.user_id,
+                        'email': request.email,
+                        'name': request.username,
+                        'plant': [
+                            {
+                                'index': new_plant_index,
+                                'image_url': url,
+                                'name': pred_img,
+                                'c_in': c_in
+                            }
+                        ]
+                    }
+
+                    # Add the new plant to the existing plant list
+                    existing_plant_list.append(data['plant'][0])
+
+                    # Update the existing data with the updated plant list
+                    doc.reference.update({'plant': existing_plant_list})
+
+                    # Update the index of existing plants in the list
+                    for i, plant in enumerate(existing_plant_list):
+                        plant['index'] = i
+
+                    # Update the data object with the updated plant list
+                    data['plant'] = existing_plant_list
+
+                    # Calculate the sum of c_in from all indices in the plant object
+                    c_in_sum = sum(plant['c_in'] for plant in existing_plant_list)
+
+                    # Update the data object with the multiplied c_in_sum
+                    data['c_in_sum'] = c_in_sum
+
+                    # Update the existing data with the updated plant list and c_in_sum
+                    doc.reference.update({
+                            'plant': existing_plant_list,
+                            'c_in_sum': c_in_sum
+                        })
+
+                    
+        
+            else:
+                # Create data object to be stored in Firestore with initial plant
                 data = {
                     'uuid': uuid,
                     'user_id': request.user_id,
                     'email': request.email,
                     'name': request.username,
+                    'c_in_sum':c_in,
                     'plant': [
                         {
-                            'index': new_plant_index,
+                            'index': 0,
                             'image_url': url,
                             'name': pred_img,
                             'c_in': c_in
@@ -214,57 +263,106 @@ def predict():
                     ]
                 }
 
-                # Add the new plant to the existing plant list
-                existing_plant_list.append(data['plant'][0])
+                # Save data to Firestore
+                users_ref.document(uuid).set(data)
+        if distance is not None and transport is not None:
+            c_out=emission_count(transport,int(distance))
 
-                # Update the existing data with the updated plant list
-                doc.reference.update({'plant': existing_plant_list})
+            # Check if user data already exists in Firestore
+            users_ref = db.collection('users')
+            query = users_ref.where('user_id', '==', request.user_id).limit(1)
+            existing_data = list(query.stream()) 
 
-                # Update the index of existing plants in the list
-                for i, plant in enumerate(existing_plant_list):
-                    plant['index'] = i
+            # Initialize the data dictionary
+            
+            if existing_data:
+                    # Iterate over the existing user data (assuming there is only one)
+                for doc in existing_data:
+                    existing_doc = doc.to_dict()
+                    existing_transport_list = existing_doc.get('transport', [])
 
-                # Update the data object with the updated plant list
-                data['plant'] = existing_plant_list
+                    if isinstance(existing_transport_list, dict):
+                        existing_transport_list = [existing_transport_list]
 
-                # Calculate the sum of c_in from all indices in the plant object
-                c_in_sum = sum(plant['c_in'] for plant in existing_plant_list)
+                        # Determine the index for the new transport
+                    new_transport_index = len(existing_transport_list)
 
-                # Update the data object with the multiplied c_in_sum
-                data['c_in_sum'] = c_in_sum
+                        # Create data object to be stored in Firestore with the new transport
+                    t_data = {
+                                    'uuid': uuid,
+                                    'user_id': request.user_id,
+                                    'email': request.email,
+                                    'name': request.username,
+                                    'transport': [
+                                    {
+                                        'index': new_transport_index,
+                                        'name' : transport,
+                                        'distance': distance,
+                                        'c_out':c_out
+                                    }
+                                    ]
+                                    }
 
-                # Update the existing data with the updated plant list and c_in_sum
-                doc.reference.update({
-                        'transport': existing_plant_list,
-                        'c_in_sum': c_in_sum
-                    })
+                        # Add the new transport to the existing transport list
+                    existing_transport_list.append(t_data['transport'][0])
 
-                return jsonify({"data": data, "error": False, "message": "Transport data added successfully"}), 200
-    
-        else:
-            # Create data object to be stored in Firestore with initial plant
-            data = {
-                'uuid': uuid,
-                'user_id': request.user_id,
-                'email': request.email,
-                'name': request.username,
-                'c_in_sum':c_in,
-                'plant': [
-                    {
-                        'index': 0,
-                        'image_url': url,
-                        'name': pred_img,
-                        'c_in': c_in
-                    }
-                ]
-            }
+                        # Update the existing data with the updated transport list
+                    doc.reference.update({'transport': existing_transport_list})
 
-            # Save data to Firestore
-            users_ref.document(uuid).set(data)
+                        # Update the index of existing transport in the list
+                    for i, transport in enumerate(existing_transport_list):
+                        transport['index'] = i
+
+                        # Update the data object with the updated transport list
+                    t_data['transport'] = existing_transport_list
+
+                        # Calculate the sum of c_out from all indices in the transport object
+                    c_out_sum = sum(transport['c_out'] for transport in existing_transport_list)
+
+                        # Multiply c_out_sum by -1
+                    c_out_sum *= -1
+
+                        # Update the data object with the multiplied c_out_sum
+                    t_data['c_out_sum'] = c_out_sum
+
+                        # Update the existing data with the updated transport list and c_out_sum
+                    doc.reference.update({
+                            'transport': existing_transport_list,
+                            'c_out_sum': c_out_sum
+                        })
+
+                        
+
+            else:
+                # Create data object to be stored in Firestore with initial transport
+                c_out_sum = c_out*-1
+                t_data = {
+                    'uuid': uuid,
+                    'user_id': request.user_id,
+                    'email': request.email,
+                    'name': request.username,
+                    'c_out_sum':c_out_sum,
+                    'transport': [
+                        {   
+                            'index':0,
+                            'name' : transport,
+                            'distance': distance,
+                            'c_out':c_out
+                        }
+                            ]
+                        }
+
+                    # Save data to Firestore
+                users_ref.document(uuid).set(t_data)
+
+          
+                
 
         # Create the response data
+        
         response_data = {
-            'data': data,
+            'data_plant': data,
+            'data_transport':t_data,
             'message': 'Success',
             'error': False,
         }
