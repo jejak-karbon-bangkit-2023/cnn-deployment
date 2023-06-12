@@ -73,23 +73,31 @@ will be writen in the firestore include the url of the image.
  
 
 ```json
-        {
-            "data": {
-        "email": "*******r@gmail.com",
-        "name": "c******r",
+       {
+    "data": {
+        "c_in_sum": 347.15999999999997,
+        "email": "c*******er@gmail.com",
+        "name": "coba-server",
         "plant": [
             {
-                "image_url": "https://storage.googleapis.com/url",
+                "c_in": 335.64,
+                "image_url": "https://storage.googleapis.com/i************.jpg",
                 "index": 0,
-                "name": "Pohon Cassia",
-                "c_in": 0.96
+                "name": "Pohon Bungur"
+            },
+            {
+                "c_in": 11.52,
+                "image_url": "https://storage.googleapis.com/i**********.jpg",
+                "index": 1,
+                "name": "Pohon Cassia"
             }
         ],
-        "user_id": "Z64dvD********7cg1",
-        "uuid": "89bbcd*********4ad877e7"
+        "user_id": "Z********1",
+        "uuid": "6d97acc9-2851-4a10-9497-006980cb14c6"
     },
     "error": false,
-    "message": "Success"
+    "message": "Transport data added successfully"
+}
 ```      
             
 
@@ -152,15 +160,24 @@ will be writen in the firestore include the url of the image.
 ```json
 {
     "data": {
-        "email": "***@gmail.com",
+        "c_score": -167.84000000000003,
+        "email": "******@gmail.com",
         "name": "coba-server",
         "plant": [
             {
-                "image_url": "URL",
+                "c_in": 335.64,
+                "image_url": "https://storage.googleapis.com/******.jpg",
                 "index": 0,
+                "name": "Pohon Bungur"
+            },
+            {
+                "c_in": 11.52,
+                "image_url": "https://storage.googleapis.com/*******.jpg",
+                "index": 1,
                 "name": "Pohon Cassia"
             }
         ],
+        "status": "Manusia Merah",
         "transport": [
             {
                 "c_out": 515,
@@ -169,7 +186,7 @@ will be writen in the firestore include the url of the image.
                 "name": "Sepeda Motor"
             }
         ],
-        "user_id": "****MGUNNtjEW7cg1"
+        "user_id": "Z6*********GMGUNNtjEW7cg1"
     },
     "error": false,
     "message": "User retrieved successfully"
@@ -188,13 +205,22 @@ will be writen in the firestore include the url of the image.
 ```json
 {
     "data": {
-        "c_out": 1344,
-        "distance": 7,
-        "index": 0,
-        "name": "Mobil"
+        "c_out_sum": -515,
+        "email": "coba-server@gmail.com",
+        "name": "coba-server",
+        "transport": [
+            {
+                "c_out": 515,
+                "distance": 5,
+                "index": 0,
+                "name": "Sepeda Motor"
+            }
+        ],
+        "user_id": "**********cg1",
+        "uuid": "b1**************b7"
     },
     "error": false,
-    "message": "Transport deleted"
+    "message": "Transport data added successfully"
 }
 ```
 ###Get Spesific User Transportation
