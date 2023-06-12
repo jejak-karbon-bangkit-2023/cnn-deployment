@@ -71,10 +71,10 @@ will be writen in the firestore include the url of the image.
     - `transport`: String field yang mewakili jenis transportasi.
     - `distance`: Integer field yang mewakili jarak dalam kilometer.s
 
-*notes data dapat berupa 
-*1. upload file saja
-*2. upload data transport dan distance saja
-*3. upload file, data transport, dan distance
+*notes data dapat berupa:* 
+1. upload file saja
+2. upload data transport dan distance saja
+3. upload file, data transport, dan distance
 
 
 - **Response**:
